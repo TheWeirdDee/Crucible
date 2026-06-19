@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { WarRoomPreview } from "@/components/landing/WarRoomPreview";
+import { SiegeSpine } from "@/components/landing/SiegeSpine";
+import { WhatItDoes } from "@/components/landing/WhatItDoes";
+import { Reveal } from "@/components/landing/Reveal";
 
 // Real Spike/siege tx hashes (data/crucible-demo.json) — proof, not placeholders.
 const R1_TX = "0xe76b2188c10bf959327e8c1e78b8bf45906e4af2fc7b6c2357ffa83847806bdf";
@@ -62,6 +65,40 @@ export default function Home() {
         </div>
       </header>
 
+      {/* THE MATH */}
+      <Section>
+        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-dim">the math</p>
+        <div className="mt-8 grid grid-cols-1 gap-px border border-line bg-line md:grid-cols-2">
+          <div className="bg-espresso p-8">
+            <div className="font-mono text-[11px] uppercase tracking-[0.25em] text-dim">
+              The old way
+            </div>
+            <div className="mt-6 font-display text-4xl text-dim md:text-5xl">$30K–$100K</div>
+            <div className="mt-1 font-display text-2xl text-dim/70">four to six weeks</div>
+            <p className="mt-6 max-w-sm leading-relaxed text-dim">
+              A firm reads your code line by line and hands back a PDF of findings. Thorough.
+              Slow. Expensive.
+            </p>
+          </div>
+          <div className="bg-espresso p-8">
+            <div className="font-mono text-[11px] uppercase tracking-[0.25em] text-cognac">
+              Crucible
+            </div>
+            <div className="mt-6 font-display text-4xl text-champagne md:text-5xl">Under 10 min</div>
+            <div className="mt-1 font-display text-2xl italic text-cognac">
+              the same adversarial fight
+            </div>
+            <p className="mt-6 max-w-sm leading-relaxed text-champagne/90">
+              Not a review — a real attack. Proof is a transaction hash on a live chain, and
+              your contract leaves the room patched.
+            </p>
+          </div>
+        </div>
+      </Section>
+
+      {/* THE SIEGE — pinned, scroll-scrubbed reveal of the real product */}
+      <SiegeSpine />
+
       {/* THE PROBLEM */}
       <Section>
         <h2 className="font-display text-3xl text-champagne md:text-4xl">
@@ -76,31 +113,8 @@ export default function Home() {
         </p>
       </Section>
 
-      {/* WHAT IT DOES */}
-      <Section>
-        <h2 className="font-display text-3xl text-champagne md:text-4xl">
-          Six agents. Two sides. One verdict you sign.
-        </h2>
-        <p className="mt-5 max-w-2xl text-dim">
-          Crucible runs an adversarial security review as a live fight between AI agents in a
-          shared Band room:
-        </p>
-        <ul className="mt-6 max-w-2xl divide-y divide-line border-y border-line">
-          {[
-            ["The Architect", "maps your contract's attack surface."],
-            ["The Red Lead", "reads the code and recruits the exact specialist attackers it needs — a reentrancy expert, an access-control expert — pulling them into the room at runtime."],
-            ["Each specialist", "runs a real exploit against your contract on a live blockchain fork, with a real transaction hash as proof."],
-            ["The Engineer", "patches the code under fire."],
-            ["The specialists", "re-attack the patch to confirm it holds."],
-            ["The Judge", "scores every round and compiles a hardening verdict — which you, the human, approve."],
-          ].map(([who, what]) => (
-            <li key={who} className="flex flex-col gap-1 py-4 sm:flex-row sm:gap-4">
-              <span className="w-40 shrink-0 font-mono text-sm text-cognac">{who}</span>
-              <span className="text-dim">{what}</span>
-            </li>
-          ))}
-        </ul>
-      </Section>
+      {/* WHAT IT DOES — centered, larger, scroll-revealed */}
+      <WhatItDoes />
 
       {/* HOW IT WORKS */}
       <Section id="how">
@@ -171,20 +185,22 @@ export default function Home() {
 
       {/* FINAL CTA */}
       <section className="border-t border-line px-6 py-24 text-center">
-        <h2 className="font-display text-4xl text-champagne md:text-5xl">
-          Find the bug before the <span className="italic text-cognac">attacker</span> does.
-        </h2>
-        <p className="mx-auto mt-5 max-w-xl text-dim">
-          Stop shipping to audit blind. Put your contract in the crucible first.
-        </p>
-        <div className="mt-8">
-          <Link
-            href="/war-room"
-            className="border border-cognac bg-cognac px-8 py-3 font-mono text-sm text-ink transition-colors hover:bg-cognac/85"
-          >
-            Watch a real siege
-          </Link>
-        </div>
+        <Reveal>
+          <h2 className="font-display text-4xl text-champagne md:text-5xl">
+            Find the bug before the <span className="italic text-cognac">attacker</span> does.
+          </h2>
+          <p className="mx-auto mt-5 max-w-xl text-dim">
+            Stop shipping to audit blind. Put your contract in the crucible first.
+          </p>
+          <div className="mt-8">
+            <Link
+              href="/war-room"
+              className="border border-cognac bg-cognac px-8 py-3 font-mono text-sm text-ink transition-colors hover:bg-cognac/85"
+            >
+              Watch a real siege
+            </Link>
+          </div>
+        </Reveal>
       </section>
 
       {/* Footer */}
@@ -198,7 +214,7 @@ export default function Home() {
 function Section({ children, id }: { children: React.ReactNode; id?: string }) {
   return (
     <section id={id} className="border-t border-line px-6 py-20">
-      <div className="mx-auto max-w-5xl">{children}</div>
+      <Reveal className="mx-auto max-w-5xl">{children}</Reveal>
     </section>
   );
 }
