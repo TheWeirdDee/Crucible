@@ -1,0 +1,10 @@
+# Template — copy to agent_config.yaml and fill with values from the Band dashboard.
+# agent_config.yaml is gitignored; this .example file is committed as documentation.
+
+spike-recruiter:
+  agent_id: "<recruiter Agent UUID>"
+  api_key: "<recruiter Band API key>"
+
+spike-specialist:
+  agent_id: "<specialist Agent UUID>"
+  api_key: "<specialist Band API key>"

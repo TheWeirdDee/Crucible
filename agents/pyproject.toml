@@ -1,0 +1,10 @@
+[project]
+name = "agents"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "band-sdk[anthropic,pydantic-ai]>=1.0.0",
+    "truststore>=0.10.4",
+]

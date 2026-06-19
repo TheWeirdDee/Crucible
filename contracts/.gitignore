@@ -1,0 +1,6 @@
+# Foundry build artifacts
+out/
+cache/
+# Local Anvil log
+anvil.log
+# Keep broadcast/ — it holds the real Spike B exploit tx records.

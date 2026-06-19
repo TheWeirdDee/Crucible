@@ -1,0 +1,47 @@
+SPIKE A — BAND RUNTIME RECRUITMENT — RESULT: GREEN
+Date: 2026-06-14
+Verdict: One agent (spike-recruiter) recruited another (spike-specialist) into a live
+Band room AT RUNTIME, by its own LLM decision. band_lookup_peers + band_add_participant
+both fired; the specialist joined and replied. Same-owner agents are auto-discoverable as
+peers — NO contact step was needed.
+
+LLM routed through AI/ML API (Anthropic-compatible): ANTHROPIC_BASE_URL=https://api.aimlapi.com,
+model claude-sonnet-4-6. Real SDK tool names: band_lookup_peers / band_add_participant
+(NOT thenvoi_*).
+
+================================================================================
+EVIDENCE — recruiter.log, deliberate test (room c54a92a0-f83d-4c57-bda2-45b966fe1fee)
+================================================================================
+# 1. Recruiter receives the task and reasons (LLM call via AI/ML API):
+2026-06-14 19:09:01,368 INFO band.adapters.anthropic: Room c54a92a0-...: Calling Anthropic with 2 messages (first_msg=True)
+2026-06-14 19:09:00,...  INFO httpx: HTTP Request: POST https://api.aimlapi.com/v1/messages "HTTP/1.1 200 OK"
+
+# 2. band_lookup_peers FIRES  (GET /agent/peers, filtered to peers not already in the room):
+2026-06-14 19:09:08,043 INFO httpx: HTTP Request: GET https://app.band.ai/api/v1/agent/peers?not_in_chat=c54a92a0-f83d-4c57-bda2-45b966fe1fee&page=1&page_size=50 "HTTP/1.1 200 OK"
+#    -> 200 OK (non-empty): spike-specialist WAS discoverable as a peer (same-owner auto-discovery)
+
+# 3. band_add_participant FIRES  (resolves the peer id, then POSTs the participant):
+2026-06-14 19:09:12,194 INFO httpx: HTTP Request: GET https://app.band.ai/api/v1/agent/peers?not_in_chat=c54a92a0-...&page=1&page_size=100 "HTTP/1.1 200 OK"   # internal _lookup_peer id resolution
+2026-06-14 19:09:12,518 INFO httpx: HTTP Request: POST https://app.band.ai/api/v1/agent/chats/c54a92a0-f83d-4c57-bda2-45b966fe1fee/participants "HTTP/1.1 201 Created"
+#    -> 201 Created: spike-specialist ADDED to the room at runtime
+
+# 4. Recruiter posts the @mention + tool-call traces (Emit.EXECUTION events):
+2026-06-14 19:09:..,... INFO httpx: HTTP Request: POST https://app.band.ai/api/v1/agent/chats/c54a92a0-.../events   "HTTP/1.1 201 Created"   # band_lookup_peers tool_call/result
+2026-06-14 19:09:..,... INFO httpx: HTTP Request: POST https://app.band.ai/api/v1/agent/chats/c54a92a0-.../messages "HTTP/1.1 201 Created"   # @spike-specialist mention
+
+================================================================================
+EVIDENCE — specialist.log: spike-specialist joined the room and replied
+================================================================================
+2026-06-14 19:09:17,397 INFO band.adapters.anthropic: Room c54a92a0-...: No historical messages found   # newly joined this room
+2026-06-14 19:09:17,397 INFO band.adapters.anthropic: Room c54a92a0-...: Calling Anthropic with 2 messages (first_msg=True)   # responding to the @mention
+2026-06-14 19:09:..,...  INFO httpx: HTTP Request: POST https://app.band.ai/api/v1/agent/chats/c54a92a0-.../messages "HTTP/1.1 201 Created"   # specialist's reply posted
+
+================================================================================
+SECOND SUCCESSFUL RUN (room cb8e7739-...): after switching to AI/ML API the recruiter
+re-processed the earlier message and recruited again — band_lookup_peers at 19:06:38,
+band_add_participant (POST /participants 201) at 19:06:43, specialist joined+replied 19:06:49+.
+================================================================================
+
+Tool-name note: the platform tools are band_lookup_peers / band_add_participant (base
+tools, exposed by default). The thenvoi_* names in agents/BAND_CONFIG.md were the
+unverified guess and are WRONG — correct them before TASK 3.

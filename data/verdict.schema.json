@@ -1,0 +1,35 @@
+{
+  "contract": "VaultStaking.sol",
+  "session_id": "crucible-<uuid>",
+  "timestamp": "<ISO-8601>",
+  "rounds": [
+    {
+      "round": 1,
+      "attack_class": "reentrancy",
+      "specialist": "@ReentrancySpecialist",
+      "exploit_tx_hash": "0x...",
+      "vault_balance_before": "100 ETH",
+      "vault_balance_after": "0 ETH",
+      "result": "LANDED",
+      "patch_applied": true,
+      "re_attack_result": "BLOCKED"
+    },
+    {
+      "round": 2,
+      "attack_class": "access_control",
+      "specialist": "@AccessControlSpecialist",
+      "exploit_tx_hash": "0x...",
+      "result": "LANDED",
+      "patch_applied": true,
+      "re_attack_result": "BLOCKED"
+    }
+  ],
+  "severity_rating": "CRITICAL → RESOLVED",
+  "remediation_checklist": [
+    "Apply nonReentrant to all external functions handling ETH transfers",
+    "Follow checks-effects-interactions on all withdraw paths",
+    "Add onlyOwner to pause(), emergencyDrain(), setFee()"
+  ],
+  "human_approved": false,
+  "approver": null
+}

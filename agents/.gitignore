@@ -1,0 +1,11 @@
+# Secrets / per-agent credentials — never commit
+.env
+agent_config.yaml
+
+# uv / venv / python
+.venv/
+__pycache__/
+*.pyc
+
+# logs
+*.log

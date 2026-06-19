@@ -1,0 +1,56 @@
+# ── Crucible .gitignore ───────────────────────────────────────────────
+# Goal: exclude EVERY secret + build artifact; keep ALL source and docs
+# (README, PRD, AGENTS.md, etc.) visible to judges.
+
+# ── Secrets / credentials (NEVER commit) ──────────────────────────────
+# Matches .env, .env.local, agents/.env, spike/.env, etc. in any directory.
+.env
+.env.*
+# …but DO commit the example templates (documentation, no real keys).
+!.env.example
+!.env*.example
+# Per-agent Band credentials (agents/agent_config.yaml, spike/agent_config.yaml).
+agent_config.yaml
+# (agent_config.yaml.example is a different filename and stays tracked.)
+*.pem
+
+# ── Node / Next.js ────────────────────────────────────────────────────
+/node_modules
+**/node_modules
+/.next/
+/out/
+/build
+/coverage
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+.pnp
+.pnp.*
+
+# generated playback copy (source of truth is data/crucible-demo.json)
+/public/crucible-demo.json
+
+# ── Python / uv (agents/, spike/) ─────────────────────────────────────
+.venv/
+__pycache__/
+*.pyc
+
+# ── Foundry / contracts ───────────────────────────────────────────────
+/contracts/out/
+/contracts/cache/
+/contracts/lib/
+/contracts/broadcast/
+
+# ── Logs ──────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── local-only docs (kept on disk, NOT published) ────────────────────
+gap.md
+demo-script.md
+
+# ── misc ──────────────────────────────────────────────────────────────
+.DS_Store

@@ -1,0 +1,37 @@
+CRUCIBLE — FEATHERLESS PARTNER-PRIZE PROOF
+Captured 2026-06-16 (room 05ccf2e3-2619-49a9-ba52-37a09743e4b7). Companion to siege-evidence.txt.
+
+VERDICT: Featherless AI demonstrably serves a Crucible agent's LLM calls and drove a
+REAL on-chain exploit. @Crucible-AccessSpec routes through Featherless
+(unsloth/Llama-3.3-70B-Instruct) via the band-sdk PydanticAIAdapter (OpenAI-compatible).
+
+================================================================================
+PROVIDER TAGS (band-sdk logs every LLM interaction with provider=)
+================================================================================
+2026-06-16 21:38:53 INFO crucible.siege: prepared Crucible-AccessSpec (accessspec) -> provider=featherless model=unsloth/Llama-3.3-70B-Instruct
+2026-06-16 21:39:02 INFO crucible.providers: LLM provider=featherless model=unsloth/Llama-3.3-70B-Instruct agent=Crucible-AccessSpec
+2026-06-16 21:41:30 INFO crucible.providers: LLM provider=featherless model=unsloth/Llama-3.3-70B-Instruct agent=Crucible-AccessSpec
+
+================================================================================
+FEATHERLESS API CALLS (httpx, host = api.featherless.ai)
+================================================================================
+41 x  POST https://api.featherless.ai/v1/chat/completions  "HTTP/1.1 200 OK"
+ 3 x  POST https://api.featherless.ai/v1/chat/completions  "HTTP/1.1 429 Too Many Requests"
+       (429 = plan concurrency limit: Llama-3.3-70B costs 4 units = the full feather_pro_plus
+        budget of 4; a momentary retry overlap tripped it, then recovered.)
+
+================================================================================
+REAL ON-CHAIN EXPLOIT driven by the Featherless agent
+================================================================================
+Access-control exploit (emergencyDrain, unauthorized caller) on live Anvil fork:
+  tx 0xa7c05e43f2d5fa53681bf7b230e8722d0b4fba37a78a824f29f8bc5f893a2e3d
+  vault 100 ETH -> 0 ETH
+
+================================================================================
+NOTE / KNOWN LIMITATION (why live Featherless is not used for the recorded demo)
+================================================================================
+Llama-3.3-70B is far less turn-disciplined than Claude: after completing the exploit it
+kept calling the model instead of posting once and stopping (it produced ~41 calls from
+2 incoming messages). Eligibility is PROVEN above; the recorded demo therefore runs on
+playback (data/crucible-demo.json, the clean Claude-driven siege). Anthropic is the
+documented target for RedLead/Judge once that key is funded.
