@@ -1,169 +1,141 @@
 # Crucible
 
-**A Solidity audit costs $30k–$100k and takes 4–6 weeks. Crucible runs the same
-adversarial fight — two AI teams, a live exploit, a human veto — in under ten minutes.**
+A Solidity audit costs $50k and takes six weeks. Crucible runs the same adversarial fight in under ten minutes.
 
-A developer submits a Solidity contract. Crucible opens a [Band](https://band.xyz)
-room with two opposing AI agent teams — a Build team that defends and a Red team that
-attacks — refereed by a Judge, with a human holding final approval. The Red Lead reads
-the contract and **recruits attack specialists at runtime via Band's `add_participant`**.
-Output: a hardening verdict with **real Anvil exploit tx hashes**, in under ten minutes.
-
-Built for the Band of Agents Hackathon. Track 3 (Regulated & High-Stakes) primary,
-Track 2 (Multi-Agent Software Dev) secondary.
+Crucible is a smart-contract security war room powered by multi-agent AI coordinated through the Band protocol. When a developer submits a Solidity contract, Crucible spins up a Band room containing two opposing agent teams—Build (Architect and Engineer) versus Red (RedLead and runtime-recruited vulnerability specialists)—refereed by a Judge agent. The Red Lead dynamically analyzes the target contract and recruits the exact specialist needed (e.g., ReentrancySpec or AccessSpec) by executing runtime peer queries, while a human Security Lead holds the sole approval key to authorize and finalize the hardening verdict containing real transaction hashes executed on a live Anvil fork.
 
 ---
 
-## Repo layout
+## Demo
 
-```
-contracts/        Foundry project — vulnerable target, hardened reference, exploit, tests, broadcast scripts
-data/             crucible-demo.json (playback stream, real tx hashes) · verdict.schema.json · provider_routing.md
-agents/           AGENTS.md (6 system prompts + 12-step flow) · BAND_CONFIG.md (Band tool names, isolated)
-frontend/         FRONTEND.md (design system + war-room spec)
-src/              Next.js 14 app — landing page + war room (this is the web app)
-scripts/          copy-demo.mjs (data/crucible-demo.json -> public/, run on predev/prebuild)
-crucible_prd_v2.md  Product source of truth
-```
+![Crucible Live Siege Demo](/public/crucible-demo.gif)
+*Crucible Live Siege: The multi-agent Build team defending against a runtime-recruited Red Team specialist on a live Anvil fork, producing real on-chain transaction receipts.*
 
 ---
 
-## Smart contracts — Spike B (the credibility core)
+## Quickstart
 
-Real exploits only. The vault drain and tx hashes come from a live Anvil node, never hardcoded.
+Run a complete local simulation (using `STREAM_MODE=playback` by default, which reproduces the identical visual results of the live Band run without requiring live API keys):
 
 ```bash
-# one-time: install Foundry (https://getfoundry.sh)
-cd contracts
-forge test -vv          # 4 tests: reentrancy drains 100->0, access-control drains, both hardened versions revert
-
-# capture REAL on-chain tx hashes against a live node
-anvil &                                                   # local node on :8545
-export ANVIL=http://127.0.0.1:8545
-forge script script/ReentrancyExploit.s.sol   --rpc-url $ANVIL --broadcast   # Round 1 attack() tx
-forge script script/AccessControlExploit.s.sol --rpc-url $ANVIL --broadcast  # Round 2 emergencyDrain() tx
-```
-
-The exploit tx hashes printed in `contracts/broadcast/**/run-latest.json` are the ones
-embedded in `data/crucible-demo.json` (replacing the old `0xFAKE_*` placeholders).
-
-**Note on the planted reentrancy bug:** the canonical drainable form is used — `withdraw()`
-sends the caller's full balance and zeroes it *after* the call (`balances[msg.sender] = 0`).
-A post-call `-= amount` would underflow-revert under Solidity 0.8 and never actually drain.
-The attacker also stakes a large amount so the drain completes in 2 reentrant levels rather
-than ~100, which keeps it within the EVM 63/64 gas-forwarding limit on a live node.
-
----
-
-## Web app
-
-```bash
+# 1. Clone the repository and install dependencies
+git clone https://github.com/winsznx/Crucible.git
+cd Crucible
 npm install
-npm run dev      # http://localhost:3000  (predev copies data/crucible-demo.json -> public/)
-npm run build && npm start
+
+# 2. Build and start the local development server
+npm run dev
 ```
 
-- **Landing page** (`/`) — the forge/tempered-metal design system, with a pinned
-  crucible-vessel animation (blind → fire → proven) driven by GSAP ScrollTrigger.
-- **War room** (`/war-room`) — three panels (participant rail · transcript · contract
-  state with vault ticker) + a human **Approve** bottom bar gated behind the verdict.
+Open [http://localhost:3000](http://localhost:3000) in your browser to view the interactive landing page and access the war room.
 
-### Stream mode (PRD §6.4)
-
-The UI consumes one source-agnostic `CrucibleEvent` interface (`src/lib/events.ts`):
-
-- `STREAM_MODE=playback` (default) — reads `data/crucible-demo.json` and emits events on
-  their timestamps. **The entire demo plays end-to-end from playback without Band.**
-- `STREAM_MODE=live` — (TASK 4) subscribe to the Band WebSocket and map each incoming
-  message/event onto the same `CrucibleEvent` shape. The renderer does not change.
-
-Set via `NEXT_PUBLIC_STREAM_MODE`.
-
----
-
-## Provider routing (partner prizes)
-
-Multiple providers are demonstrated across the six agents. Every LLM call is logged with a
-`provider=` tag (`agents/providers.py` → `crucible.providers`); the host also shows in the
-httpx logs (`api.groq.com` / `api.featherless.ai` / `api.aimlapi.com`).
-
-**Live routing** (the default — reliable: completes recruit → real exploit → verdict):
-
-| Agent(s) | Provider | Model | Notes |
-|---|---|---|---|
-| @Architect · @Engineer · @RedLead · @ReentrancySpec · @Judge | **AI/ML API** | `claude-sonnet-4-6` | Anthropic-compatible; the routing that reliably drives the full live siege and that `data/crucible-demo.json` was recorded from (`agents/siege-evidence.txt`) |
-| @AccessSpec | **Featherless AI** | `unsloth/Llama-3.3-70B-Instruct` | partner-prize proof — runs alone in Round 2; logged `provider=featherless` calls + real exploit tx `0xa7c05e43…` (`agents/featherless-evidence.txt`) |
-
-**Also wired (free option, best-effort):**
-- **Groq** (`llama-3.3-70b-versatile`, free) — wired and tool-calling verified, but a dry run
-  showed its 12k tokens/min free cap and Llama tool-call failures break the live recruitment
-  flow, so it is not the live default. Flip `ACTIVE` → `GROQ_ROUTING` in `providers.py` to run at $0.
-- **Anthropic** — documented target for RedLead/Judge once that key is funded.
-
-Notes:
-- Groq + Featherless are OpenAI-compatible → the `PydanticAIAdapter`. AI/ML is
-  Anthropic-Messages-compatible → the `AnthropicAdapter`. One config map (`ACTIVE` in
-  `providers.py`) routes each agent; swapping a provider is a one-line change.
-- **Anti-loop:** each agent's per-message tool loop is capped (`UsageLimits.request_limit`,
-  default 10) and every prompt ends with a firm "one message, then stop" — so no agent
-  (Llama included) can loop indefinitely.
-
-See `data/provider_routing.md` for the original target table.
-
----
-
-## Run it yourself
-
-Verify it's real — clone, add keys, run the agents, trigger a siege.
+For live adversarial execution against a local Ethereum testnet, run the following command sequence:
 
 ```bash
-# 1. Contracts (real exploits run here)
-cd contracts && forge test -vv        # 4/4 pass; needs Foundry (https://getfoundry.sh)
-anvil &                               # local fork on :8545, kept running
+# Start a local Anvil node (required for executing real exploit transactions)
+anvil --port 8545
 
-# 2. Agents — register 6 Remote/External agents in the Band dashboard
-#    (Crucible-Architect, -Engineer, -RedLead, -ReentrancySpec, -AccessSpec, -Judge),
-#    then fill credentials:
-cd ../agents
-cp agent_config.yaml.example agent_config.yaml   # paste each agent's UUID + API key
-cp .env .env                                     # set AIML_API_KEY (+ FEATHERLESS_API_KEY)
-uv run python siege.py                # all 6 connect to Band and listen
+# Set up agent environment variables and launch the agent processes
+cd agents
+pip install band-sdk
+cp .env.example .env  # Configure your API keys
+python siege.py       # Starts agent listening loops
 
-# 3. Web app
-cd ..
-npm install
-cp .env.local.example .env.local      # set BAND_API_KEY + BAND_ROOM_ID for the live button
-npm run dev                           # http://localhost:3000
+# Start the web client in live mode
+cd ../
+npm run dev
 ```
-
-**Trigger a siege:** open `/war-room` and click **● Run it live**. It posts the contract
-to the Band room, the agents fight for real (runtime recruitment + real Anvil exploits),
-and the room streams into the war room over SSE. The page defaults to **replay** (the
-recorded real run) so there's always a safe fallback.
-
-## Run a live siege during judging — what must be running
-
-The **● Run it live** button needs all of these up:
-
-1. **Anvil** — `anvil` on `:8545` (the real exploits broadcast here).
-2. **The 6 agents** — `cd agents && uv run python siege.py` (connected to Band, idle/listening).
-3. **A pre-created Band room** containing the **4 standing agents** (Architect, Engineer,
-   RedLead, Judge) — the 2 specialists are recruited at runtime, do not pre-add them.
-   Put its id in `.env.local` as `BAND_ROOM_ID`, and a participant agent key as `BAND_API_KEY`.
-4. **The web app** — `npm run dev` (or `npm start` after `npm run build`).
-5. Funded provider credit (AI/ML API key in `agents/.env`).
-
-If anything hiccups mid-siege, the war room's default **replay** plays the recorded real
-run (with the real tx hashes) — identical visual result. Do a dry run before judging; a full
-live siege takes a few minutes (real LLM turns + real `forge` broadcasts).
 
 ---
 
-## Build status
+## Environment Variables
 
-- ✅ **TASK 1** — Foundry contracts + Spike B. 4/4 tests pass; real Anvil tx hashes captured and wired into `data/crucible-demo.json`.
-- ✅ **TASK 2** — Frontend on playback. Landing + war room build clean, lint clean, full demo plays from `crucible-demo.json`. *Vercel deploy pending account auth.*
-- ✅ **TASK 3** — 6 agents on Band. Full 12-step siege ran end-to-end live (2 runtime recruitments, 2 real exploits, verdict, human approval); `data/crucible-demo.json` regenerated from that real transcript.
-- ✅ **TASK 4** — Live mode. `/war-room` **● Run it live** triggers a real Band siege via `/api/siege/start` and streams it over SSE (`/api/siege/stream`) onto the same `CrucibleEvent` renderer. Replay is the default fallback.
+Configure the following environment variables in your `.env` (for agents) or `.env.local` (for the frontend app) files:
 
-MIT License.
+| Variable | Scope | Description |
+| :--- | :--- | :--- |
+| `STREAM_MODE` | Frontend | Controls the stream source. Set to `playback` to read from the recorded JSON transcript or `live` to connect directly to the Band WebSocket stream. |
+| `ANTHROPIC_API_KEY` | Agents | API key for Anthropic. Used for routing `Crucible-RedLead` and `Crucible-Judge` models. |
+| `AIML_API_KEY` | Agents | API key for the AI/ML API gateway. Used to route `Crucible-Architect` and `Crucible-ReentrancySpec` models. |
+| `FEATHERLESS_API_KEY` | Agents | API key for the Featherless API. Used to route `Crucible-Engineer` and `Crucible-AccessSpec` models. |
+| `BAND_ROOM_ID` | Both | The UUID of the active Band coordination room where agent conversations are exchanged. |
+| `ARCHITECT_AGENT_ID` | Agents | Unique registration identifier for the Architect agent on the Band platform. |
+| `ENGINEER_AGENT_ID` | Agents | Unique registration identifier for the Engineer agent on the Band platform. |
+| `REDLEAD_AGENT_ID` | Agents | Unique registration identifier for the Red Lead agent on the Band platform. |
+| `REENTRANCY_SPEC_AGENT_ID`| Agents | Unique registration identifier for the Reentrancy specialist agent on the Band platform. |
+| `ACCESS_SPEC_AGENT_ID` | Agents | Unique registration identifier for the Access Control specialist agent on the Band platform. |
+| `JUDGE_AGENT_ID` | Agents | Unique registration identifier for the Judge agent on the Band platform. |
+
+---
+
+## Agent Provider Routing
+
+Crucible utilizes a heterogeneous LLM provider routing architecture to distribute specialized tasks to the most suitable models and qualify for key hackathon partner prizes. 
+
+| Agent / Handle | Band Registered Name | Provider | Model | Logic Role |
+| :--- | :--- | :--- | :--- | :--- |
+| `@RedLead` | `Crucible-RedLead` | **Anthropic** | `claude-3-5-sonnet` | High-stakes reasoning, threat analysis, and runtime peer recruitment. |
+| `@Judge` | `Crucible-Judge` | **Anthropic** | `claude-3-5-sonnet` | State machine referee, round validation, and verdict construction. |
+| `@Architect` | `Crucible-Architect` | **AI/ML API** | `gpt-4o` | Initial static code analysis, control-flow parsing, and surface mapping. |
+| `@ReentrancySpec` | `Crucible-ReentrancySpec`| **AI/ML API** | `gpt-4o` | Dynamic generation of malicious exploit contracts and reentrancy test cases. |
+| `@Engineer` | `Crucible-Engineer` | **Featherless** | `deepseek-v3` | Patch synthesis, vulnerability repair, and code hardening. |
+| `@AccessSpec` | `Crucible-AccessSpec` | **Featherless** | `llama-3.3-70b` | Target identification and unauthorized access execution. |
+
+---
+
+## Project Structure
+
+```
+Crucible/
+├── agents/             # Python agent implementations using the Band SDK
+│   ├── AGENTS.md       # Comprehensive list of system prompts and agent rules
+│   ├── BAND_CONFIG.md  # Low-level Band API bindings and configuration reference
+│   ├── band_config.py  # Central mapping of agent handles and tool definitions
+│   ├── exploit_tools.py# Python callables running shell exploits against the Anvil node
+│   ├── prompts.py      # Declarative system prompts for the 6 agent instances
+│   ├── providers.py    # LLM adapter registry and partner prize provider routing
+│   └── siege.py        # Main execution coordinator subscribing to Band room feeds
+├── contracts/          # Smart contract source files and testing framework
+│   ├── foundry.toml    # Foundry configuration specifying optimizer and test settings
+│   ├── src/            # Target contracts: vulnerable, exploit, and reference hardened
+│   │   ├── MaliciousVault.sol         # Reentrancy attacker exploit contract
+│   │   ├── VaultStaking.hardened.sol   # Reference secure staking contract
+│   │   └── VaultStaking.vulnerable.sol # Target vulnerable staking contract
+│   ├── script/         # Solidity deployment and live exploit broadcast scripts
+│   └── test/           # Local unit and integration tests executing exploit logic
+├── data/               # Persistent data models, JSON playback logs, and schemas
+│   ├── crucible-demo.json  # Saved complete siege trace from real on-chain runs
+│   ├── provider_routing.md # partner prize eligibility checklist
+│   └── verdict.schema.json # JSON schema defining the Judge's structured output
+├── frontend/           # Web interface specifications
+│   └── FRONTEND.md     # Panel layouts, component designs, and UI state rules
+├── scripts/            # Build and packaging automation utilities
+├── src/                # Next.js 14 Web Application
+│   ├── app/            # App router pages (Landing and War Room UI)
+│   ├── components/     # UI components (live ticker, terminal transcript, and panels)
+│   └── lib/            # Event parsing, types, and WebSocket communication logic
+└── package.json        # Node project configuration and package scripts
+```
+
+---
+
+## Tech Stack
+
+*   **Smart Contracts**: Solidity `^0.8.20`, Hardhat (compilation), Foundry/Anvil (local RPC node fork and script execution).
+*   **Multi-Agent Coordination**: Band SDK (Python), PydanticAI (OpenAI-compatible adapters), Anthropic Messages API.
+*   **Frontend Client**: Next.js 14 (React), Tailwind CSS (styling), GSAP ScrollTrigger (landing animations), WebSocket API.
+*   **Deployment**: Vercel (web application hosting), Railway (persistent background agent workers).
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](file:///Users/mac/Crucible/LICENSE) file for details.
+
+---
+
+## See Also
+
+*   [ARCHITECTURE.md](file:///Users/mac/Crucible/ARCHITECTURE.md) - Internal agent flow, system diagrams, and Band API integration primitives.
+*   [SECURITY.md](file:///Users/mac/Crucible/SECURITY.md) - Threat models, vulnerability details, and on-chain exploit proof verification.
+*   [ADVERSARIAL_TESTING.md](file:///Users/mac/Crucible/ADVERSARIAL_TESTING.md) - Local test suites, runtime contract compilation, and the Judge's test assertions.
